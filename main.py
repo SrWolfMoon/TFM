@@ -4,6 +4,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.neural_network import MLPClassifier
 from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.compose import ColumnTransformer
 import warnings
 
 def cargar_datos(nombre_archivo):
@@ -15,7 +17,7 @@ if __name__ == "__main__":
     datos_entrenamiento = cargar_datos('datos_entrenamiento.csv')
 
     # Eliminar columnas 'Nombre' y 'Apellido'
-    datos_entrenamiento = datos_entrenamiento.drop(['Nombre', 'Apellido'], axis=1)
+    datos_entrenamiento = datos_entrenamiento.drop(['Nombre', 'Apellido', 'Id'], axis=1)
 
     # Convertir columnas de lesiones a valores booleanos
     for columna in ['LesionRodilla', 'LesionTobillo', 'LesionHombro']:
@@ -33,18 +35,25 @@ if __name__ == "__main__":
 
 
     # Construir la pipeline con selección de características y validación cruzada
-    pipeline = Pipeline([
-        ('selector', SelectKBest(f_classif)),
-        ('scaler', StandardScaler()),
-        ('mlp', MLPClassifier(max_iter=500, random_state=42))
+    preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', StandardScaler(), X_combined.columns.tolist())  # Adjust num_features according to your dataset
     ])
 
-    # Definir los hiperparámetros para la búsqueda en cuadrícula
+    # Define pipeline with preprocessor and RandomForestClassifier
+    pipeline = Pipeline([
+        ('preprocessor', preprocessor),
+        ('rf', RandomForestClassifier(random_state=42))
+    ])
+
+    # Define parameters for GridSearchCV
     parametros = {
-        'selector__k': [5, 10, 15],
-        'mlp__hidden_layer_sizes': [(100,), (100, 50), (150, 100, 50)],
-        'mlp__alpha': [0.0001, 0.001, 0.01]
+        'rf__n_estimators': [50, 100, 150],
+        'rf__max_depth': [None, 10, 20],
+        'rf__min_samples_split': [2, 5, 10],
+        'rf__min_samples_leaf': [1, 2, 4]
     }
+
 
     # Realizar la búsqueda en cuadrícula con validación cruzada
     grid_search = GridSearchCV(pipeline, parametros, cv=5, scoring='accuracy')
@@ -60,7 +69,7 @@ if __name__ == "__main__":
 
     # Leer datos para predicción desde otro CSV
     datos_prediccion = cargar_datos('datos_prediccion.csv')
-    datos_prediccion = datos_prediccion.drop(['Nombre', 'Apellido'], axis=1)
+    datos_prediccion = datos_prediccion.drop(['Id','Nombre', 'Apellido'], axis=1)
     datos_prediccion = pd.get_dummies(datos_prediccion, columns=['Genero', 'EntrenoPistaBuena'])
     
     columnas_faltantes = set(['Genero_Femenino', 'Genero_Masculino', 'EntrenoPistaBuena_No', 'EntrenoPistaBuena_Si']) - set(datos_prediccion.columns)
