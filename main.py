@@ -5,6 +5,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.neural_network import MLPClassifier
 from sklearn.feature_selection import SelectKBest, f_classif
 import warnings
+import random
 
 def cargar_datos(nombre_archivo):
     return pd.read_csv(nombre_archivo)
@@ -15,7 +16,7 @@ if __name__ == "__main__":
     datos_entrenamiento = cargar_datos('datos_entrenamiento.csv')
 
     # Eliminar columnas 'Nombre' y 'Apellido'
-    datos_entrenamiento = datos_entrenamiento.drop(['Nombre', 'Apellido'], axis=1)
+    datos_entrenamiento = datos_entrenamiento.drop(['Nombre', 'Apellido', "Id"], axis=1)
 
     # Convertir columnas de lesiones a valores booleanos
     for columna in ['LesionRodilla', 'LesionTobillo', 'LesionHombro']:
@@ -29,14 +30,16 @@ if __name__ == "__main__":
     X_combined = pd.get_dummies(X, columns=['Genero', 'EntrenoPistaBuena'])
 
     # Dividir datos combinados en conjuntos de entrenamiento y prueba
-    X_train, X_test, y_train, y_test = train_test_split(X_combined, y, test_size=0.2, random_state=42)
+    random_state = random.randint(1, 100)
+    print("RANDOM STATE:",random_state)
+    X_train, X_test, y_train, y_test = train_test_split(X_combined, y, test_size=0.15, random_state=random_state)
 
 
     # Construir la pipeline con selección de características y validación cruzada
     pipeline = Pipeline([
         ('selector', SelectKBest(f_classif)),
         ('scaler', StandardScaler()),
-        ('mlp', MLPClassifier(max_iter=500, random_state=42))
+        ('mlp', MLPClassifier(max_iter=500, random_state=random_state))
     ])
 
     # Definir los hiperparámetros para la búsqueda en cuadrícula
@@ -60,7 +63,7 @@ if __name__ == "__main__":
 
     # Leer datos para predicción desde otro CSV
     datos_prediccion = cargar_datos('datos_prediccion.csv')
-    datos_prediccion = datos_prediccion.drop(['Nombre', 'Apellido'], axis=1)
+    datos_prediccion = datos_prediccion.drop(['Nombre', 'Apellido', "Id"], axis=1)
     datos_prediccion = pd.get_dummies(datos_prediccion, columns=['Genero', 'EntrenoPistaBuena'])
     
     columnas_faltantes = set(['Genero_Femenino', 'Genero_Masculino', 'EntrenoPistaBuena_No', 'EntrenoPistaBuena_Si']) - set(datos_prediccion.columns)
